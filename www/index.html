@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Student Finance</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Paisa">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--tx:#16202e;--mu:#68748a;--br:#e3e8f0;--ac:#0f766e;--ac2:#14b8a6;--rd:#dc2626;--gn:#16a34a;--am:#d97706;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e141c;--card:#17202b;--tx:#e8eef6;--mu:#93a1b5;--br:#26323f;--ac:#2dd4bf;--ac2:#14b8a6;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e141c;--card:#17202b;--tx:#e8eef6;--mu:#93a1b5;--br:#26323f;--ac:#2dd4bf;--ac2:#14b8a6;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{display:flex;min-height:100vh}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--br);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:8px 2px;font-size:11px;cursor:pointer}
+nav button span{display:block;font-size:19px}nav button.on{color:var(--ac);font-weight:600}
+main{flex:1;padding:16px 14px 90px;max-width:900px;margin:0 auto;width:100%}
+@media(min-width:800px){nav{position:sticky;top:0;flex-direction:column;width:190px;height:100vh;border-top:0;border-right:1px solid var(--br);padding:16px 8px}nav button{text-align:left;font-size:14px;padding:10px 12px;border-radius:10px}nav button span{display:inline;margin-right:8px}nav button.on{background:var(--bg)}main{padding:24px}}
+h1{font-size:22px;margin:0 0 12px}h2{font-size:16px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--br);border-radius:14px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}@media(min-width:800px){.grid{grid-template-columns:repeat(3,1fr)}}
+.stat{background:var(--card);border:1px solid var(--br);border-radius:14px;padding:12px}.stat small{color:var(--mu);display:block}.stat b{font-size:18px}
+.hero{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;border:0;grid-column:1/-1}.hero small{color:#e6fffb}.hero b{font-size:28px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--br)}.row:last-child{border:0}
+.mu{color:var(--mu);font-size:13px}.in{color:var(--gn)}.out{color:var(--rd)}
+input,select,button.b{font:inherit;padding:9px 10px;border:1px solid var(--br);border-radius:10px;background:var(--bg);color:var(--tx);min-width:0}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:8px}.f .w{grid-column:1/-1}
+button.b{background:var(--ac);color:#fff;border:0;cursor:pointer;font-weight:600}button.b.g{background:var(--bg);color:var(--tx);border:1px solid var(--br)}button.b.s{padding:5px 9px;font-size:13px}
+.bar{height:8px;background:var(--br);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac2)}.bar i.w{background:var(--am)}.bar i.d{background:var(--rd)}
+.q{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.err{color:var(--rd);font-size:13px;min-height:18px}
+.pay{display:flex;gap:6px;margin-top:6px}.pay input{flex:1}
+</style></head><body>
+<div id="app"><nav id="nav"></nav><main id="main"></main></div>
+<script>
+const CATS=["Food","Transport","Shopping","Mobile","Internet","Clothing","Entertainment","Medical","Books","Personal care","Hostel","Fees","Other"];
+const INC=["Pocket money","Allowance","Part-time job","Freelancing","Scholarship","Gift","Other income"];
+const BILLS=["Hostel rent","Electricity","Gas","Water","Wi-Fi","Mess","Grocery","Cleaning","Tuition","Semester fee","Exam fee","Registration","Library","Transport fee","Other"];
+const TABS=[["dash","🏠","Home"],["tx","💳","Transactions"],["split","👥","Friends"],["bills","🏠","Bills & Fees"],["plan","🎯","Plan"],["rep","📊","Reports"]];
+let S={tx:[],debts:[],bills:[],goals:[],budget:{month:0,cats:{}}},view="dash",editId=null,q="",msg="";
+try{Object.assign(S,JSON.parse(localStorage.getItem("sfm")||"{}"))}catch(e){}
+const save=()=>{try{localStorage.setItem("sfm",JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id),uid=()=>Math.random().toString(36).slice(2,9);
+const today=()=>new Date().toISOString().slice(0,10),mk=d=>d.slice(0,7);
+const fmt=n=>"Rs. "+(Math.round(n*100)/100).toLocaleString("en-PK");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const opts=(a,v)=>a.map(x=>`<option ${x===v?"selected":""}>${x}</option>`).join("");
+const sum=a=>a.reduce((s,x)=>s+x,0),pos=v=>isFinite(v)&&v>0;
+const cm=()=>mk(today()),mtx=t=>S.tx.filter(x=>mk(x.date)===cm()&&x.type===t);
+const inc=()=>sum(S.tx.filter(x=>x.type==="Income").map(x=>x.amt)),exp=()=>sum(S.tx.filter(x=>x.type==="Expense").map(x=>x.amt));
+const owe=d=>d.amt-d.paid;
+function nav(){$("nav").innerHTML=TABS.map(t=>`<button class="${view===t[0]?"on":""}" onclick="go('${t[0]}')"><span>${t[1]}</span>${t[2]}</button>`).join("")}
+function go(v){view=v;msg="";render();scrollTo(0,0)}
+function chart(){const ms=[];const d=new Date();d.setDate(1);for(let i=5;i>=0;i--){const x=new Date(d.getFullYear(),d.getMonth()-i,1);ms.push(x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0"))}
+const v=ms.map(m=>sum(S.tx.filter(x=>x.type==="Expense"&&mk(x.date)===m).map(x=>x.amt))),mx=Math.max(...v,1);
+return `<svg viewBox="0 0 300 130" width="100%" role="img" aria-label="Monthly spending">${v.map((a,i)=>{const h=a/mx*90;return `<rect x="${i*50+10}" y="${100-h}" width="30" height="${h}" rx="5" fill="var(--ac2)"/><text x="${i*50+25}" y="118" text-anchor="middle" font-size="10" fill="var(--mu)">${ms[i].slice(5)}</text>`}).join("")}</svg>`}
+function dash(){const mi=sum(mtx("Income").map(x=>x.amt)),me=sum(mtx("Expense").map(x=>x.amt));
+const iow=sum(S.debts.filter(d=>d.dir==="borrowed").map(owe)),ow=sum(S.debts.filter(d=>d.dir==="lent").map(owe));
+const up=S.bills.filter(b=>b.paid<b.amt).sort((a,b)=>a.due.localeCompare(b.due)).slice(0,4);
+return `<h1>Dashboard</h1><div class="q"><button class="b" onclick="quick('Income')">+ Income</button><button class="b" onclick="quick('Expense')">+ Expense</button><button class="b g" onclick="go('split')">+ Debt</button><button class="b g" onclick="go('bills')">+ Payment</button></div>
+<div class="grid"><div class="stat hero"><small>Available balance</small><b>${fmt(inc()-exp())}</b></div>
+<div class="stat"><small>Income (month)</small><b class="in">${fmt(mi)}</b></div><div class="stat"><small>Expenses (month)</small><b class="out">${fmt(me)}</b></div>
+<div class="stat"><small>Remaining (month)</small><b>${fmt(mi-me)}</b></div><div class="stat"><small>I owe</small><b class="out">${fmt(iow)}</b></div><div class="stat"><small>Owed to me</small><b class="in">${fmt(ow)}</b></div></div>
+<div class="card" style="margin-top:12px"><h2>Monthly spending</h2>${chart()}</div>
+<div class="card"><h2>Upcoming payments</h2>${up.map(b=>`<div class="row"><span>${esc(b.title)}<br><span class="mu">Due ${b.due}</span></span><b>${fmt(b.amt-b.paid)}</b></div>`).join("")||'<span class="mu">Nothing due.</span>'}</div>
+<div class="card"><h2>Recent transactions</h2>${txRows(S.tx.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5),false)||'<span class="mu">No transactions yet.</span>'}</div>`}
+function quick(t){editId=null;view="tx";render();$("ty").value=t;tyChange();scrollTo(0,0)}
+function txRows(a,act){return a.map(x=>`<div class="row"><span>${esc(x.title)}<br><span class="mu">${x.date} · ${esc(x.cat)} · ${esc(x.method)}</span></span><span><b class="${x.type==="Income"?"in":"out"}">${x.type==="Income"?"+":"-"}${fmt(x.amt)}</b>${act?`<br><button class="b g s" onclick="editTx('${x.id}')">Edit</button> <button class="b g s" onclick="delTx('${x.id}')">Delete</button>`:""}</span></div>`).join("")}
+function tx(){const e=S.tx.find(x=>x.id===editId)||{title:"",amt:"",type:"Expense",cat:"Food",date:today(),method:"Cash",note:""};
+const list=S.tx.filter(x=>(x.title+x.cat+x.note+x.date+x.amt).toLowerCase().includes(q.toLowerCase())).sort((a,b)=>b.date.localeCompare(a.date));
+return `<h1>Transactions</h1><div class="card"><h2>${editId?"Edit":"Add"} transaction</h2><div class="f">
+<input id="ti" class="w" placeholder="Title" value="${esc(e.title)}"><input id="am" type="number" min="0" step="0.01" placeholder="Amount (PKR)" value="${e.amt}">
+<select id="ty" onchange="tyChange()">${opts(["Expense","Income"],e.type)}</select><select id="ca">${opts(e.type==="Income"?INC:CATS,e.cat)}</select>
+<input id="dt" type="date" value="${e.date}"><select id="me">${opts(["Cash","Bank","JazzCash","Easypaisa","Card"],e.method)}</select>
+<input id="no" class="w" placeholder="Note (optional)" value="${esc(e.note)}"><button class="b w" onclick="saveTx()">${editId?"Update":"Save"}</button></div><div class="err" id="er">${msg}</div></div>
+<input style="width:100%;margin-bottom:10px" placeholder="Search by title, category, date, amount" value="${esc(q)}" oninput="q=this.value;$('lst').innerHTML=txRows(S.tx.filter(x=>(x.title+x.cat+x.note+x.date+x.amt).toLowerCase().includes(q.toLowerCase())).sort((a,b)=>b.date.localeCompare(a.date)),true)">
+<div class="card" id="lst">${txRows(list,true)||'<span class="mu">No transactions.</span>'}</div>`}
+function tyChange(){$("ca").innerHTML=opts($("ty").value==="Income"?INC:CATS)}
+function addTx(o){S.tx.push(Object.assign({id:uid()},o));save()}
+function saveTx(){const o={title:$("ti").value.trim(),amt:parseFloat($("am").value),type:$("ty").value,cat:$("ca").value,date:$("dt").value,method:$("me").value,note:$("no").value.trim()};
+if(!o.title||!pos(o.amt)||!o.date){$("er").textContent="Enter a title, a positive amount and a date.";return}
+if(!editId&&S.tx.some(x=>x.title===o.title&&x.amt===o.amt&&x.date===o.date&&x.type===o.type)&&!confirm("A matching transaction already exists. Save anyway?"))return;
+if(editId){Object.assign(S.tx.find(x=>x.id===editId),o);editId=null;save()}else addTx(o);
+msg="";render();budgetAlert(o)}
+function budgetAlert(o){if(o.type!=="Expense")return;const l=S.budget.cats[o.cat];if(l){const s=sum(mtx("Expense").filter(x=>x.cat===o.cat).map(x=>x.amt));if(s>=l*.8)alert(o.cat+" budget is at "+Math.round(s/l*100)+"%")}}
+function editTx(id){editId=id;render();scrollTo(0,0)}
+function delTx(id){if(confirm("Delete this transaction?")){S.tx=S.tx.filter(x=>x.id!==id);save();render()}}
+function split(){const ppl={};S.debts.forEach(d=>{ppl[d.who]=(ppl[d.who]||0)+(d.dir==="lent"?1:-1)*owe(d)});
+return `<h1>Friends & Shared</h1><div class="card"><h2>Split a bill</h2><div class="f"><input id="st" class="w" placeholder="What for? (e.g. Dinner)"><input id="sa" type="number" min="0" placeholder="Total paid by me">
+<input id="sn" placeholder="Friends, comma separated"><input id="sc" class="w" placeholder="Custom amounts, comma separated (blank = equal)"><button class="b w" onclick="doSplit()">Split (I paid)</button></div>
+<div class="mu">Equal split includes you. Example: Rs. 3,000 with 3 friends = Rs. 750 each.</div></div>
+<div class="card"><h2>Record borrowed / lent</h2><div class="f"><input id="dw" placeholder="Person"><input id="da" type="number" min="0" placeholder="Amount"><select id="dd"><option value="lent">I lent</option><option value="borrowed">I borrowed</option></select><input id="dn" placeholder="Note / group"><button class="b w" onclick="addDebt()">Add</button></div><div class="err" id="er">${msg}</div></div>
+<div class="card"><h2>Settlement summary</h2>${Object.keys(ppl).filter(k=>Math.abs(ppl[k])>0.005).map(k=>`<div class="row"><span>${ppl[k]>0?esc(k)+" pays you":"You pay "+esc(k)}</span><b class="${ppl[k]>0?"in":"out"}">${fmt(Math.abs(ppl[k]))}</b></div>`).join("")||'<span class="mu">All settled.</span>'}</div>
+<div class="card"><h2>History</h2>${S.debts.slice().reverse().map(d=>`<div class="row" style="flex-wrap:wrap"><span>${esc(d.who)} · ${d.dir==="lent"?"lent":"borrowed"}<br><span class="mu">${d.date} ${esc(d.note||"")}</span></span><span><b>${fmt(d.amt)}</b><br><span class="mu">${owe(d)<=0?"Paid":"Left "+fmt(owe(d))}</span></span>
+${owe(d)>0?`<div class="pay" style="width:100%"><input id="p_${d.id}" type="number" min="0" placeholder="Payment amount"><button class="b s" onclick="payDebt('${d.id}')">Pay</button></div>`:""}</div>`).join("")||'<span class="mu">No records.</span>'}</div>`}
+function addDebt(){const a=parseFloat($("da").value),w=$("dw").value.trim();if(!w||!pos(a)){$("er").textContent="Enter a name and a positive amount.";return}
+S.debts.push({id:uid(),who:w,amt:a,paid:0,dir:$("dd").value,note:$("dn").value.trim(),date:today()});save();msg="";render()}
+function doSplit(){const t=parseFloat($("sa").value),n=$("sn").value.split(",").map(s=>s.trim()).filter(Boolean),c=$("sc").value.split(",").map(s=>s.trim()).filter(Boolean).map(Number);
+if(!pos(t)||!n.length)return alert("Enter a total and at least one friend.");
+let sh;if(c.length){if(c.length!==n.length||c.some(x=>!(x>=0)))return alert("Give one valid custom amount per friend.");if(sum(c)>t+0.001)return alert("Custom amounts exceed the total.");sh=c}else{const e=Math.floor(t/(n.length+1)*100)/100;sh=n.map(()=>e)}
+n.forEach((w,i)=>{if(sh[i]>0)S.debts.push({id:uid(),who:w,amt:sh[i],paid:0,dir:"lent",note:$("st").value.trim()||"Split",date:today()})});save();render()}
+function payDebt(id){const d=S.debts.find(x=>x.id===id),a=parseFloat($("p_"+id).value);if(!pos(a)||a>owe(d)+0.001)return alert("Enter an amount up to "+fmt(owe(d)));d.paid=Math.round((d.paid+a)*100)/100;save();render()}
+function bills(){const lst=S.bills.slice().sort((a,b)=>a.due.localeCompare(b.due));
+return `<h1>Bills & Fees</h1><div class="card"><h2>Add hostel bill or education fee</h2><div class="f"><select id="bk">${opts(BILLS)}</select><input id="bt" placeholder="Title (e.g. Oct rent)"><input id="ba" type="number" min="0" placeholder="Amount"><input id="bd" type="date" value="${today()}"><button class="b w" onclick="addBill()">Add</button></div><div class="err" id="er">${msg}</div></div>
+<div class="card"><h2>All bills</h2>${lst.map(b=>{const l=b.amt-b.paid,od=l>0&&b.due<today();return `<div class="row" style="flex-wrap:wrap"><span>${esc(b.title)} <span class="mu">(${esc(b.kind)})</span><br><span class="mu ${od?"out":""}">${od?"Overdue · ":""}Due ${b.due}</span></span><span><b>${fmt(b.amt)}</b><br><span class="mu">${l<=0?"Paid":b.paid>0?"Partial · left "+fmt(l):"Unpaid"}</span></span>
+${l>0?`<div class="pay" style="width:100%"><input id="p_${b.id}" type="number" min="0" placeholder="Pay amount" value="${l}"><button class="b s" onclick="payBill('${b.id}')">Pay</button></div>`:""}</div>`}).join("")||'<span class="mu">No bills yet.</span>'}</div>`}
+function addBill(){const a=parseFloat($("ba").value);if(!pos(a)||!$("bt").value.trim()||!$("bd").value){$("er").textContent="Enter a title, amount and due date.";return}
+S.bills.push({id:uid(),kind:$("bk").value,title:$("bt").value.trim(),amt:a,paid:0,due:$("bd").value});save();msg="";render()}
+function payBill(id){const b=S.bills.find(x=>x.id===id),a=parseFloat($("p_"+id).value),l=b.amt-b.paid;if(!pos(a)||a>l+0.001)return alert("Enter an amount up to "+fmt(l));
+b.paid=Math.round((b.paid+a)*100)/100;addTx({title:b.title,amt:a,type:"Expense",cat:/rent|Electric|Gas|Water|Wi-Fi|Mess|Grocery|Clean/i.test(b.kind)?"Hostel":"Fees",date:today(),method:"Cash",note:b.kind});save();render()}
+function plan(){const ms=mtx("Expense"),ts=sum(ms.map(x=>x.amt)),bm=S.budget.month,p=(s,l)=>{const r=l?s/l*100:0;return `<div class="bar"><i class="${r>=100?"d":r>=80?"w":""}" style="width:${Math.min(r,100)}%"></i></div>`};
+return `<h1>Budget & Savings</h1><div class="card"><h2>Monthly budget</h2><div class="pay"><input id="bm" type="number" min="0" placeholder="Monthly limit" value="${bm||""}"><button class="b" onclick="setB()">Set</button></div>
+${bm?`<p class="mu">${fmt(ts)} of ${fmt(bm)} used · ${fmt(Math.max(bm-ts,0))} left</p>${p(ts,bm)}`:""}</div>
+<div class="card"><h2>Category limits</h2><div class="pay"><select id="bc">${opts(CATS)}</select><input id="bl" type="number" min="0" placeholder="Limit"><button class="b" onclick="setC()">Set</button></div>
+${Object.keys(S.budget.cats).map(c=>{const s=sum(ms.filter(x=>x.cat===c).map(x=>x.amt));return `<div style="margin-top:10px"><div class="row" style="border:0;padding:0"><span>${esc(c)}</span><span class="mu">${fmt(s)} / ${fmt(S.budget.cats[c])}</span></div>${p(s,S.budget.cats[c])}</div>`}).join("")}</div>
+<div class="card"><h2>Savings goals</h2><div class="pay"><input id="gn" placeholder="Goal name"><input id="gt" type="number" min="0" placeholder="Target"><button class="b" onclick="addG()">Add</button></div>
+${S.goals.map(g=>`<div style="margin-top:12px"><div class="row" style="border:0;padding:0"><b>${esc(g.name)}</b><span class="mu">${fmt(g.saved)} / ${fmt(g.target)}</span></div>${p(g.saved,g.target)}<div class="mu">Remaining ${fmt(Math.max(g.target-g.saved,0))}</div><div class="pay"><input id="g_${g.id}" type="number" min="0" placeholder="Add money"><button class="b s" onclick="addS('${g.id}')">Add</button></div>
+${g.hist.slice(-3).map(h=>`<div class="mu">${h.d}: +${fmt(h.a)}</div>`).join("")}</div>`).join("")}</div>`}
+function setB(){const v=parseFloat($("bm").value);if(!pos(v))return alert("Enter a positive amount.");S.budget.month=v;save();render()}
+function setC(){const v=parseFloat($("bl").value);if(!pos(v))return alert("Enter a positive limit.");S.budget.cats[$("bc").value]=v;save();render()}
+function addG(){const t=parseFloat($("gt").value),n=$("gn").value.trim();if(!n||!pos(t))return alert("Enter a name and target.");S.goals.push({id:uid(),name:n,target:t,saved:0,hist:[]});save();render()}
+function addS(id){const g=S.goals.find(x=>x.id===id),a=parseFloat($("g_"+id).value);if(!pos(a))return alert("Enter a positive amount.");g.saved+=a;g.hist.push({d:today(),a});save();render()}
+function rep(){const m=cm(),by={};mtx("Expense").forEach(x=>by[x.cat]=(by[x.cat]||0)+x.amt);const mx=Math.max(...Object.values(by),1),mi=sum(mtx("Income").map(x=>x.amt)),me=sum(mtx("Expense").map(x=>x.amt));
+const fees=S.bills.filter(b=>b.kind.match(/Tuition|fee|Exam|Registration|Library/i)),host=S.bills.filter(b=>!fees.includes(b));
+return `<h1>Reports</h1><div class="card"><h2>${m}: income vs expense</h2><div class="row"><span>Income</span><b class="in">${fmt(mi)}</b></div><div class="row"><span>Expenses</span><b class="out">${fmt(me)}</b></div><div class="row"><span>Net</span><b>${fmt(mi-me)}</b></div></div>
+<div class="card"><h2>Spending by category</h2>${Object.keys(by).sort((a,b)=>by[b]-by[a]).map(c=>`<div style="margin-bottom:8px"><div class="row" style="border:0;padding:0"><span>${esc(c)}</span><span class="mu">${fmt(by[c])}</span></div><div class="bar"><i style="width:${by[c]/mx*100}%"></i></div></div>`).join("")||'<span class="mu">No expenses this month.</span>'}</div>
+<div class="card"><h2>Summary</h2><div class="row"><span>Hostel bills unpaid</span><b>${fmt(sum(host.map(b=>b.amt-b.paid)))}</b></div><div class="row"><span>Fees unpaid</span><b>${fmt(sum(fees.map(b=>b.amt-b.paid)))}</b></div><div class="row"><span>Friend debts open</span><b>${fmt(sum(S.debts.map(owe)))}</b></div><div class="row"><span>Total saved</span><b>${fmt(sum(S.goals.map(g=>g.saved)))}</b></div></div>
+<div class="card"><button class="b" onclick="exp_()">Export transactions (CSV)</button> <button class="b g" onclick="theme()">Toggle theme</button><div class="mu" style="margin-top:8px">Data is stored privately in this browser only.</div></div>`}
+async function exp_(){const rows=[["Date","Title","Type","Category","Amount","Method","Note"]].concat(S.tx.map(x=>[x.date,x.title,x.type,x.cat,x.amt,x.method,x.note]));
+const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n");
+try{const d=window.claude&&await claude.use("downloads");if(d){await d.save({filename:"transactions.csv",data:csv})}else{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="transactions.csv";a.click()}}catch(e){}}
+function theme(){const r=document.documentElement,dk=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dk?"light":"dark"}
+function render(){nav();$("main").innerHTML={dash,tx,split,bills,plan,rep}[view]()}
+render();
+
+</script></body></html>
